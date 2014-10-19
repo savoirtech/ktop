@@ -1,6 +1,14 @@
 
 package com.savoirtech.karaf.commands;
 
+import java.lang.management.ClassLoadingMXBean;
+import java.lang.management.GarbageCollectorMXBean;
+import java.lang.management.ManagementFactory;
+import java.lang.management.MemoryMXBean;
+import java.lang.management.OperatingSystemMXBean;
+import java.lang.management.RuntimeMXBean;
+import java.lang.management.ThreadMXBean;
+
 import java.io.IOException;
 
 import org.apache.karaf.shell.commands.Argument;
@@ -15,14 +23,20 @@ public class ktop extends AbstractAction {
 
     protected Object doExecute() throws Exception {
         try {
-            ktop();
+            RuntimeMXBean runtime = ManagementFactory.getRuntimeMXBean();
+            OperatingSystemMXBean os = ManagementFactory.getOperatingSystemMXBean();
+            ThreadMXBean threads = ManagementFactory.getThreadMXBean();
+            MemoryMXBean mem = ManagementFactory.getMemoryMXBean();
+            ClassLoadingMXBean cl = ManagementFactory.getClassLoadingMXBean();
+            ktop(runtime, os, threads, mem, cl);
         } catch (IOException e) {
             //Ignore
         }
         return null;
     }
 
-    private void ktop() throws InterruptedException, IOException {
+    private void ktop(RuntimeMXBean runtime, OperatingSystemMXBean os, ThreadMXBean threads, 
+                      MemoryMXBean mem, ClassLoadingMXBean cl) throws InterruptedException, IOException {
 
         // Continously update stats to console.
         while (true) {
@@ -32,7 +46,24 @@ public class ktop extends AbstractAction {
             System.out.flush();
             System.out.print("\33[1;1H");
             System.out.flush();
-            System.out.println("Hello World " + System.currentTimeMillis());
+            System.out.println("ktop:");
+            System.out.println("Uptime " + runtime.getUptime());
+
+            System.out.println("Threads");
+            System.out.println("Live threads " + threads.getThreadCount());
+            System.out.println("Daemon threads " + threads.getDaemonThreadCount());
+            System.out.println("Peak " + threads.getPeakThreadCount());
+            System.out.println("Total started " + threads.getTotalStartedThreadCount());
+
+            System.out.println("Memory");
+            System.out.println("Current heap size " + mem.getHeapMemoryUsage().getUsed());
+            System.out.println("Maximum heap size " + mem.getHeapMemoryUsage().getMax());
+            System.out.println("Committed heap size " +  mem.getHeapMemoryUsage().getCommitted());
+
+            System.out.println("Classes");
+            System.out.println("Current classes loaded " + cl.getLoadedClassCount());
+            System.out.println("Total classes loaded " + cl.getTotalLoadedClassCount());
+            System.out.println("Total classes unloaded " + cl.getUnloadedClassCount());
         }
     }
 }

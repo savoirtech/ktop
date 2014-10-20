@@ -10,6 +10,7 @@ import java.lang.management.RuntimeMXBean;
 import java.lang.management.ThreadMXBean;
 
 import java.lang.management.ThreadInfo;
+import java.lang.Integer;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -33,14 +34,19 @@ import org.apache.karaf.shell.console.AbstractAction;
 public class ktop extends AbstractAction {
 
     private static final int DEFAULT_SLEEP_INTERVAL = 200;
- 
-    private boolean         sortByTotalCPU_         = false;
-    private int             numberOfDisplayedThreads_ = 30;
-    private boolean         displayedThreadLimit_     = true;
-    private Map<Long, Long> previousThreadCPUMillis = new HashMap<Long, Long>();
- 
+
+    private int             numberOfDisplayedThreads = 30; 
+    private boolean         displayedThreadLimit     = true;
+    private Map<Long, Long> previousThreadCPUMillis  = new HashMap<Long, Long>();
+
+    @Option(name = "-t", aliases = { "--threads" }, description = "Number of threads to display", required = false, multiValued = false)
+    private String numThreads;
+
 
     protected Object doExecute() throws Exception {
+        if (numThreads != null) {
+             numberOfDisplayedThreads = Integer.parseInt(numThreads);;
+        }
         try {
             RuntimeMXBean runtime = ManagementFactory.getRuntimeMXBean();
             OperatingSystemMXBean os = ManagementFactory.getOperatingSystemMXBean();
@@ -86,7 +92,7 @@ public class ktop extends AbstractAction {
                                toMB(mem.getHeapMemoryUsage().getUsed()), toMB(mem.getHeapMemoryUsage().getMax()) ,
                                toMB(mem.getNonHeapMemoryUsage().getUsed()), toMB(mem.getNonHeapMemoryUsage().getMax()));
             System.out.println("==========================================================================================");
-            System.out.printf("  TID   NAME                                              STATE    CPU  TOTALCPU BLOCKEDBY%n");
+            System.out.printf("  TID   NAME                                              STATE    CPU  CPU-TIME BLOCKEDBY%n");
             printTopThreads(threads);
             System.out.println("==========================================================================================");
         }
@@ -118,30 +124,26 @@ public class ktop extends AbstractAction {
             for (Long tid : cpuTimeMap.keySet()) {
                 ThreadInfo info = threads.getThreadInfo(tid);
                 displayedThreads++;
-                if (displayedThreads > numberOfDisplayedThreads_
-                   && displayedThreadLimit_) {
+                if (displayedThreads > numberOfDisplayedThreads
+                   && displayedThreadLimit) {
                    break;
                 }
                 if (info != null) {
-                    System.out.printf(" %6d %-40s  %13s %5.2f%%    %5.2f%% %5s %n",
+                    System.out.printf(" %6d %-40s  %13s %5.2f%%    %s %5s %n",
                                       tid,
                                       leftStr(info.getThreadName(), 40),
                                       info.getThreadState(),
                                       getThreadCPUUtilization(cpuTimeMap.get(tid), 200), 
-                                      10.0,
+                                      toHHMM(threads.getThreadCpuTime(tid)/1000),
                                       getBlockedThread(info));
-                                      //getThreadCPUUtilization(cpuTimeMap.get(tid), vmInfo_.getDeltaUptime()),
-                                      //getThreadCPUUtilization(threads.getThreadCpuTime(tid), 
-                                      //                        vmInfo_.getProxyClient().getProcessCpuTime(), 1), 
-                                      //                        getBlockedThread(info));
                 }
             }
-            if (newThreadCPUMillis.size() >= numberOfDisplayedThreads_
-                && displayedThreadLimit_)
+            if (newThreadCPUMillis.size() >= numberOfDisplayedThreads
+                && displayedThreadLimit)
             {
 
             System.out.printf(" Note: Only top %d threads (according cpu load) are shown!",
-                              numberOfDisplayedThreads_);
+                              numberOfDisplayedThreads);
             System.out.println("");
             }
             previousThreadCPUMillis = newThreadCPUMillis;

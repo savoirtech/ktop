@@ -74,10 +74,12 @@ public class ktop extends AbstractAction {
                               toHHMM(runtime.getUptime()), threads.getThreadCount(),
                               threads.getPeakThreadCount(),
                               threads.getTotalStartedThreadCount());
-            System.out.printf(" GC-Time: %-7s  #GC-Runs: %-8d%n",
-                                0.0, 0);
-                                //toHHMM(sumGCTimes(gc)), sumGCCount(gc),
-                                //cl.getTotalLoadedClassCount());
+            for (GarbageCollectorMXBean gc : ManagementFactory.getGarbageCollectorMXBeans()) {
+                 float time = gc.getCollectionTime();
+                 System.out.printf(" Garbage collector: Name: %s Collections: %-5d Time: %5.3f ms %n", 
+                                   gc.getName(), gc.getCollectionCount(), time );
+            }
+ 
             System.out.printf(" #CurrentClassesLoaded: %-8d #TotalClassesLoaded: %-8d #TotalClassesUnloaded: %-8d %n",
                                cl.getLoadedClassCount(), cl.getTotalLoadedClassCount(), cl.getUnloadedClassCount());
             System.out.printf(" CPU: %5.2f%% GC: %5.2f%% HEAP:%5s /%5s NONHEAP:%5s /%5s%n",

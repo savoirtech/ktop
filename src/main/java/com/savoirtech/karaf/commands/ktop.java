@@ -21,6 +21,7 @@ import java.util.LinkedHashMap;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
+import java.util.Formatter;
 import java.io.IOException;
 
 import org.apache.karaf.shell.commands.Argument;
@@ -46,6 +47,7 @@ public class ktop extends AbstractAction {
             ThreadMXBean threads = ManagementFactory.getThreadMXBean();
             MemoryMXBean mem = ManagementFactory.getMemoryMXBean();
             ClassLoadingMXBean cl = ManagementFactory.getClassLoadingMXBean();
+            //GarbageCollectorMXBean gc = ManagementFactory.getGarbageCollectorMXBean();
             ktop(runtime, os, threads, mem, cl);
         } catch (IOException e) {
             //Ignore
@@ -68,7 +70,20 @@ public class ktop extends AbstractAction {
             System.out.printf(" ktop - %8tT, %6s, %2d cpus, %15.15s",  
                                new Date(), os.getArch(), os.getAvailableProcessors(), os.getName() + " "  + os.getVersion());
             System.out.printf(", load avg %3.2f%n", os.getSystemLoadAverage());
-            System.out.println("\n");
+            System.out.printf(" UpTime: %-7s #Threads: %-4d #ThreadsPeak: %-4d #ThreadsCreated: %-4d %n",
+                              toHHMM(runtime.getUptime()), threads.getThreadCount(),
+                              threads.getPeakThreadCount(),
+                              threads.getTotalStartedThreadCount());
+            System.out.printf(" GC-Time: %-7s  #GC-Runs: %-8d%n",
+                                0.0, 0);
+                                //toHHMM(sumGCTimes(gc)), sumGCCount(gc),
+                                //cl.getTotalLoadedClassCount());
+            System.out.printf(" #CurrentClassesLoaded: %-8d #TotalClassesLoaded: %-8d #TotalClassesUnloaded: %-8d %n",
+                               cl.getLoadedClassCount(), cl.getTotalLoadedClassCount(), cl.getUnloadedClassCount());
+            System.out.printf(" CPU: %5.2f%% GC: %5.2f%% HEAP:%5s /%5s NONHEAP:%5s /%5s%n",
+                               1.0, 1.0,
+                               toMB(mem.getHeapMemoryUsage().getUsed()), toMB(mem.getHeapMemoryUsage().getMax()) ,
+                               toMB(mem.getNonHeapMemoryUsage().getUsed()), toMB(mem.getNonHeapMemoryUsage().getMax()));
             System.out.println("==========================================================================================");
             System.out.printf("  TID   NAME                                              STATE    CPU  TOTALCPU BLOCKEDBY%n");
             printTopThreads(threads);
@@ -103,8 +118,7 @@ public class ktop extends AbstractAction {
                 ThreadInfo info = threads.getThreadInfo(tid);
                 displayedThreads++;
                 if (displayedThreads > numberOfDisplayedThreads_
-                   && displayedThreadLimit_)
-                {
+                   && displayedThreadLimit_) {
                    break;
                 }
                 if (info != null) {
@@ -112,8 +126,9 @@ public class ktop extends AbstractAction {
                                       tid,
                                       leftStr(info.getThreadName(), 40),
                                       info.getThreadState(),
+                                      getThreadCPUUtilization(cpuTimeMap.get(tid), 200), 
                                       10.0,
-                                      10.0, getBlockedThread(info));
+                                      getBlockedThread(info));
                                       //getThreadCPUUtilization(cpuTimeMap.get(tid), vmInfo_.getDeltaUptime()),
                                       //getThreadCPUUtilization(threads.getThreadCpuTime(tid), 
                                       //                        vmInfo_.getProxyClient().getProcessCpuTime(), 1), 
@@ -180,4 +195,19 @@ public class ktop extends AbstractAction {
         }
         return deltaThreadCpuTime / factor / totalTime * 100d;
     }
+
+    public String toMB(long bytes) {
+        if(bytes<0) {
+            return "n/a";
+        }
+        return "" + (bytes / 1024 / 1024) + "m";
+    }
+
+    public String toHHMM(long millis) {
+        StringBuilder sb = new StringBuilder();
+        Formatter formatter = new Formatter(sb);
+        formatter.format("%2d:%2dm", millis / 1000 / 3600,(millis / 1000 / 60) % 60);
+        return sb.toString();
+    }
+
 }

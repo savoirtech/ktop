@@ -33,8 +33,7 @@ import org.apache.karaf.shell.console.AbstractAction;
 @Command(scope = "aetos", name = "ktop", description = "Karaf Top Command")
 public class ktop extends AbstractAction {
 
-    private static final int DEFAULT_SLEEP_INTERVAL = 200;
-
+    private int               DEFAULT_SLEEP_INTERVAL = 200;
     private int             numberOfDisplayedThreads = 30; 
     private boolean         displayedThreadLimit     = true;
     private Map<Long, Long> previousThreadCPUMillis  = new HashMap<Long, Long>();
@@ -42,11 +41,17 @@ public class ktop extends AbstractAction {
     @Option(name = "-t", aliases = { "--threads" }, description = "Number of threads to display", required = false, multiValued = false)
     private String numThreads;
 
+    @Option(name = "-u", aliases = { "--updates" }, description = "Update interval in milliseconds", required = false, multiValued = false)
+    private String updates;
+
 
     protected Object doExecute() throws Exception {
         if (numThreads != null) {
-             numberOfDisplayedThreads = Integer.parseInt(numThreads);;
+             numberOfDisplayedThreads = Integer.parseInt(numThreads);
         }
+        if (updates != null) {
+             DEFAULT_SLEEP_INTERVAL = Integer.parseInt(updates);
+        } 
         try {
             RuntimeMXBean runtime = ManagementFactory.getRuntimeMXBean();
             OperatingSystemMXBean os = ManagementFactory.getOperatingSystemMXBean();
@@ -144,7 +149,10 @@ public class ktop extends AbstractAction {
 
             System.out.printf(" Note: Only top %d threads (according cpu load) are shown!",
                               numberOfDisplayedThreads);
-            System.out.println("");
+            System.out.println();
+            System.out.printf(" Note: Thread stats updated at  %d ms intervals",
+                              DEFAULT_SLEEP_INTERVAL);
+            System.out.println(); 
             }
             previousThreadCPUMillis = newThreadCPUMillis;
         } else {

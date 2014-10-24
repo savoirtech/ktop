@@ -23,7 +23,8 @@ To exit ktop, press control + c
 
 
 Runtime Options:
-================
+===
 
  -t  --threads   number of threads to display. 
+ 
  -u  --updates   information update interval in milliseconds.

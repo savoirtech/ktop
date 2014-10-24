@@ -33,8 +33,9 @@ import org.apache.karaf.shell.console.AbstractAction;
 @Command(scope = "aetos", name = "ktop", description = "Karaf Top Command")
 public class ktop extends AbstractAction {
 
-    private int               DEFAULT_SLEEP_INTERVAL = 200;
+    private int               DEFAULT_SLEEP_INTERVAL = 1000;
     private int             numberOfDisplayedThreads = 30; 
+    private long            lastUpTime               = 0;
     private boolean         displayedThreadLimit     = true;
     private Map<Long, Long> previousThreadCPUMillis  = new HashMap<Long, Long>();
 
@@ -97,19 +98,23 @@ public class ktop extends AbstractAction {
                                toMB(mem.getHeapMemoryUsage().getUsed()), toMB(mem.getHeapMemoryUsage().getMax()) ,
                                toMB(mem.getNonHeapMemoryUsage().getUsed()), toMB(mem.getNonHeapMemoryUsage().getMax()));
             System.out.println("==========================================================================================");
-            System.out.printf("  TID   NAME                                              STATE    CPU  CPU-TIME BLOCKEDBY%n");
-            printTopThreads(threads);
+            System.out.printf("    TID NAME                                              STATE    CPU  CPU-TIME BLOCKEDBY%n");
+            printTopThreads(threads, runtime);
             System.out.println("==========================================================================================");
         }
     }
 
-    private void printTopThreads(ThreadMXBean threads) {
+    private void printTopThreads(ThreadMXBean threads, RuntimeMXBean runtime) {
         // Print top ten threads
         if (threads.isThreadCpuTimeSupported()) {
             // This JVM supports telling us thread stats!
             Map<Long, Long> newThreadCPUMillis = new HashMap<Long, Long>();
 
             Map<Long, Long> cpuTimeMap = new TreeMap<Long, Long>();
+
+            long uptime = runtime.getUptime();
+            long deltaUpTime = uptime - lastUpTime;
+            lastUpTime = uptime;
 
             for (Long tid : threads.getAllThreadIds()) {
                 long threadCpuTime = threads.getThreadCpuTime(tid);
@@ -138,7 +143,7 @@ public class ktop extends AbstractAction {
                                       tid,
                                       leftStr(info.getThreadName(), 40),
                                       info.getThreadState(),
-                                      getThreadCPUUtilization(cpuTimeMap.get(tid), 200), 
+                                      getThreadCPUUtilization(cpuTimeMap.get(tid), deltaUpTime), 
                                       toHHMM(threads.getThreadCpuTime(tid)/1000),
                                       getBlockedThread(info));
                 }

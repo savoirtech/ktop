@@ -3,6 +3,12 @@ ktop
 
 Karaf Top Command
 
+ ktop - display and update sorted information about JVM and threads.
+
+Description:
+
+ The ktop command displays key JVM metrics, and updates a sorted list
+ of thread statistics. 
 
 To build, invoke:
  

@@ -10,6 +10,9 @@ Description:
  The ktop command displays key JVM metrics, and updates a sorted list
  of thread statistics. 
 
+Building from source:
+===
+
 To build, invoke:
  
  mvn install

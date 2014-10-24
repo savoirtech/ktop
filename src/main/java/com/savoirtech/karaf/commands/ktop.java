@@ -79,7 +79,7 @@ public class ktop extends AbstractAction {
             System.out.print("\33[1;1H");
             System.out.flush();
 
-            System.out.printf(" ktop - %8tT, %6s, %2d cpus, %15.15s",  
+            System.out.printf(" \u001B[1mktop\u001B[0m - %8tT, %6s, %2d cpus, %15.15s",  
                                new Date(), os.getArch(), os.getAvailableProcessors(), os.getName() + " "  + os.getVersion());
             System.out.printf(", CPU load avg %3.2f%n", os.getSystemLoadAverage());
             System.out.printf(" UpTime: %-7s #Threads: %-4d #ThreadsPeak: %-4d #ThreadsCreated: %-4d %n",
@@ -97,10 +97,10 @@ public class ktop extends AbstractAction {
             System.out.printf(" JVM Memory: HEAP:%5s /%5s NONHEAP:%5s /%5s%n",
                                toMB(mem.getHeapMemoryUsage().getUsed()), toMB(mem.getHeapMemoryUsage().getMax()) ,
                                toMB(mem.getNonHeapMemoryUsage().getUsed()), toMB(mem.getNonHeapMemoryUsage().getMax()));
-            System.out.println("==========================================================================================");
-            System.out.printf("    TID NAME                                              STATE    CPU  CPU-TIME BLOCKEDBY%n");
+            System.out.println("\u001B[36m==========================================================================================\u001B[0m");
+            System.out.printf("    TID THREAD NAME                                       STATE    CPU  CPU-TIME BLOCKEDBY%n");
             printTopThreads(threads, runtime);
-            System.out.println("==========================================================================================");
+            System.out.println("\u001B[36m==========================================================================================\u001B[0m");
         }
     }
 

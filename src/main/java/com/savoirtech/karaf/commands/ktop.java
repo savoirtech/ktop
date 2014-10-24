@@ -144,7 +144,7 @@ public class ktop extends AbstractAction {
                                       leftStr(info.getThreadName(), 40),
                                       info.getThreadState(),
                                       getThreadCPUUtilization(cpuTimeMap.get(tid), deltaUpTime), 
-                                      toHHMM(threads.getThreadCpuTime(tid)/1000),
+                                      toHHMM(threads.getThreadCpuTime(tid)/1000000),
                                       getBlockedThread(info));
                 }
             }

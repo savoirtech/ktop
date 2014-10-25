@@ -25,9 +25,9 @@ import java.util.Iterator;
 import java.util.Formatter;
 import java.io.IOException;
 
-import org.apache.karaf.shell.commands.Argument;
-import org.apache.karaf.shell.commands.Command;
-import org.apache.karaf.shell.commands.Option;
+import org.apache.felix.gogo.commands.Argument;
+import org.apache.felix.gogo.commands.Command;
+import org.apache.felix.gogo.commands.Option;
 import org.apache.karaf.shell.console.AbstractAction;
 
 @Command(scope = "aetos", name = "ktop", description = "Karaf Top Command")

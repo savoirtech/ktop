@@ -81,7 +81,11 @@ public class ktop extends AbstractAction {
 
             System.out.printf(" \u001B[1mktop\u001B[0m - %8tT, %6s, %2d cpus, %15.15s",  
                                new Date(), os.getArch(), os.getAvailableProcessors(), os.getName() + " "  + os.getVersion());
-            System.out.printf(", CPU load avg %3.2f%n", os.getSystemLoadAverage());
+            if (os.getSystemLoadAverage() != -1) { 
+                System.out.printf(", CPU load avg %3.2f%n", os.getSystemLoadAverage());
+            } else {
+                System.out.printf("%n");
+            }
             System.out.printf(" UpTime: %-7s #Threads: %-4d #ThreadsPeak: %-4d #ThreadsCreated: %-4d %n",
                               toHHMM(runtime.getUptime()), threads.getThreadCount(),
                               threads.getPeakThreadCount(),

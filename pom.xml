@@ -28,6 +28,12 @@
 
     <description>Provides the OSGi aetos commands</description>
 
+    <scm>
+        <url>https://github.com/savoirtech/ktop</url>
+        <connection>scm:git:git@github.com:savoirtech/ktop.git</connection>
+        <developerConnection>scm:git:git@github.com:savoirtech/ktop.git</developerConnection>
+    </scm>
+
     <dependencies>
         <dependency>
             <groupId>org.apache.karaf.shell</groupId>

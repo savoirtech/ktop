@@ -5,7 +5,7 @@
 
     <command-bundle xmlns="http://karaf.apache.org/xmlns/shell/v1.1.0">
         <command>
-            <action class="com.savoirtech.karaf.commands.ktop">
+            <action class="com.savoirtech.karaf.commands.KTop">
             </action>
         </command>
     </command-bundle>

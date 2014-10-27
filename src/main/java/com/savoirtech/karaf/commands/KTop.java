@@ -80,6 +80,11 @@ public class KTop extends AbstractAction {
             System.out.println("\u001B[36m==========================================================================================\u001B[0m");
             System.out.printf("    TID THREAD NAME                                       STATE    CPU  CPU-TIME BLOCKEDBY%n");
             printTopThreads(threads, runtime);
+            // Display notifications
+            System.out.printf(" Note: Only top %d threads (according cpu load) are shown!", numberOfDisplayedThreads);
+            System.out.println();
+            System.out.printf(" Note: Thread stats updated at  %d ms intervals", DEFAULT_REFRESH_INTERVAL);
+            System.out.println();
             System.out.println("\u001B[36m==========================================================================================\u001B[0m");
         }
     }
@@ -129,11 +134,10 @@ public class KTop extends AbstractAction {
     }
 
     private void printTopThreads(ThreadMXBean threads, RuntimeMXBean runtime) {
-        // Print top ten threads
+        // Test if this JVM supports telling us thread stats!
         if (threads.isThreadCpuTimeSupported()) {
-            // This JVM supports telling us thread stats!
-            Map<Long, Long> newThreadCPUMillis = new HashMap<Long, Long>();
 
+            Map<Long, Long> newThreadCPUMillis = new HashMap<Long, Long>();
             Map<Long, Long> cpuTimeMap = new TreeMap<Long, Long>();
 
             long uptime = runtime.getUptime();
@@ -152,37 +156,33 @@ public class KTop extends AbstractAction {
 
             cpuTimeMap = sortByValue(cpuTimeMap, true);
 
-            int displayedThreads = 0;
-            for (Long tid : cpuTimeMap.keySet()) {
-                ThreadInfo info = threads.getThreadInfo(tid);
-                displayedThreads++;
-                if (displayedThreads > numberOfDisplayedThreads) {
-                   break; // We're done displaying threads.
-                }
-                if (info != null) {
-                    String name = info.getThreadName();
-                    System.out.printf(" %6d %-40s  %13s %5.2f%%    %s %5s %n",
-                                      tid,
-                                      name.substring(0, Math.min(name.length(), 40)) ,
-                                      info.getThreadState(),
-                                      getThreadCPUUtilization(cpuTimeMap.get(tid), deltaUpTime), 
-                                      msToHoursMinutes(threads.getThreadCpuTime(tid)/1000000),
-                                      getBlockedThread(info));
-                }
-            }
-            // Display notiice that more threads could be displayed.
-            if (newThreadCPUMillis.size() >= numberOfDisplayedThreads) {
+            // Display threads
+            printThreads(threads, cpuTimeMap, deltaUpTime);
 
-                System.out.printf(" Note: Only top %d threads (according cpu load) are shown!",
-                                  numberOfDisplayedThreads);
-                System.out.println();
-            }
-            System.out.printf(" Note: Thread stats updated at  %d ms intervals",
-                              DEFAULT_REFRESH_INTERVAL);
-            System.out.println();
             previousThreadCPUMillis = newThreadCPUMillis;
         } else {
             System.out.printf("%n -Thread CPU metrics are not available on this jvm/platform-%n");
+        }
+    }
+
+    private void printThreads(ThreadMXBean threads, Map<Long, Long> cpuTimeMap, Long deltaUpTime) {
+        int displayedThreads = 0;
+        for (Long tid : cpuTimeMap.keySet()) {
+            ThreadInfo info = threads.getThreadInfo(tid);
+            displayedThreads++;
+            if (displayedThreads > numberOfDisplayedThreads) {
+                break; // We're done displaying threads.
+            }
+            if (info != null) {
+                String name = info.getThreadName();
+                System.out.printf(" %6d %-40s  %13s %5.2f%%    %s %5s %n",
+                                  tid,
+                                  name.substring(0, Math.min(name.length(), 40)) ,
+                                  info.getThreadState(),
+                                  getThreadCPUUtilization(cpuTimeMap.get(tid), deltaUpTime),
+                                  msToHoursMinutes(threads.getThreadCpuTime(tid)/1000000),
+                                  getBlockedThread(info));
+            }
         }
     }
 

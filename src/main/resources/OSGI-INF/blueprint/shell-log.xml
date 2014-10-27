@@ -4,7 +4,7 @@
 
     <command-bundle xmlns="http://karaf.apache.org/xmlns/shell/v1.0.0">
         <command name="aetos/ktop">
-            <action class="com.savoirtech.karaf.commands.ktop">
+            <action class="com.savoirtech.karaf.commands.KTop">
             </action>
         </command>
     </command-bundle>

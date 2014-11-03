@@ -104,6 +104,8 @@ public class KTop extends AbstractAction {
             System.out.println();
             System.out.printf(" Note: Thread stats updated at  %d ms intervals", DEFAULT_REFRESH_INTERVAL);
             System.out.println();
+            System.out.println(" To exit ktop: ctrl-C");
+            System.out.println();
             System.out.println("\u001B[36m==========================================================================================\u001B[0m");
         }
     }

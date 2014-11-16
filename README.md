@@ -29,7 +29,9 @@ To execute command on Karaf, invoke:
 
 
 To exit ktop: q
+
 To sort by a different column: < or >
+
 To reverse sort: r
 
 

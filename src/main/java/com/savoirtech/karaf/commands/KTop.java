@@ -106,7 +106,7 @@ public class KTop extends AbstractAction {
             System.out.printf("    TID THREAD NAME                                       STATE    CPU  CPU-TIME BLOCKEDBY%n");
             printTopThreads(threads, runtime);
             // Display notifications
-            System.out.printf(" Note: Only top %d threads (according cpu load) are shown!", numberOfDisplayedThreads);
+            System.out.printf(" Note: Only top %d threads are shown!", numberOfDisplayedThreads);
             System.out.println();
             System.out.printf(" Note: Thread stats updated at  %d ms intervals", DEFAULT_REFRESH_INTERVAL);
             System.out.println();

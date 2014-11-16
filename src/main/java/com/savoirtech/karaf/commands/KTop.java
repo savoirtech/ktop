@@ -19,6 +19,7 @@
 
 package com.savoirtech.karaf.commands;
 
+import java.io.InputStreamReader;
 import java.lang.management.ClassLoadingMXBean;
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
@@ -29,32 +30,35 @@ import java.lang.management.ThreadMXBean;
 
 import java.lang.management.ThreadInfo;
 import java.lang.Integer;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
 import java.util.Date;
 import java.util.LinkedList;
-import java.util.LinkedHashMap;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.Formatter;
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 
-import org.apache.karaf.shell.commands.Argument;
 import org.apache.karaf.shell.commands.Command;
 import org.apache.karaf.shell.commands.Option;
 import org.apache.karaf.shell.console.AbstractAction;
+
+import static java.util.concurrent.TimeUnit.*;
 
 @Command(scope = "aetos", name = "ktop", description = "Karaf Top Command")
 public class KTop extends AbstractAction {
 
     private int             DEFAULT_REFRESH_INTERVAL = 1000;
+    private int             DEFAULT_KEYBOARD_INTERVAL = 100;
     private int             numberOfDisplayedThreads = 30; 
     private long            lastUpTime               = 0;
-    private Map<Long, Long> previousThreadCPUMillis  = new HashMap<Long, Long>();
+    private Map<Long, Long> previousThreadCPUTime = new HashMap<Long, Long>();
+    private int sortIndex = 3;
+    private boolean reverseSort = true;
 
     @Option(name = "-t", aliases = { "--threads" }, description = "Number of threads to display", required = false, multiValued = false)
     private String numThreads;
@@ -86,9 +90,11 @@ public class KTop extends AbstractAction {
     private void KTop(RuntimeMXBean runtime, OperatingSystemMXBean os, ThreadMXBean threads, 
                       MemoryMXBean mem, ClassLoadingMXBean cl) throws InterruptedException, IOException {
 
+        Thread.currentThread().setName("ktop");
+        boolean run = true;
+
         // Continously update stats to console.
-        while (true) {
-            Thread.sleep(DEFAULT_REFRESH_INTERVAL);
+        while (run) {
             //Clear console, then print JVM stats
             clearScreen();
             printOperatingSystemHeader(os);
@@ -104,10 +110,45 @@ public class KTop extends AbstractAction {
             System.out.println();
             System.out.printf(" Note: Thread stats updated at  %d ms intervals", DEFAULT_REFRESH_INTERVAL);
             System.out.println();
-            System.out.println(" To exit ktop: ctrl-C");
+            System.out.println(" To exit ktop: q, Sorting: < or >, Reverse sort: r");
             System.out.println();
             System.out.println("\u001B[36m==========================================================================================\u001B[0m");
+
+            run = waitOnKeyboard();
         }
+    }
+
+    private boolean waitOnKeyboard() throws InterruptedException {
+        InputStreamReader reader = new InputStreamReader(session.getKeyboard());
+        for (int i = 0; i < DEFAULT_REFRESH_INTERVAL / DEFAULT_KEYBOARD_INTERVAL; i++) {
+            Thread.sleep(DEFAULT_KEYBOARD_INTERVAL);
+            try {
+                if (reader.ready()) {
+                    int value = reader.read();
+                    switch (value) {
+                        case 'q':
+                            return false;
+                        case 'r':
+                            reverseSort = !reverseSort;
+                            break;
+                        case '<':
+                            if (sortIndex > 0) {
+                                sortIndex--;
+                            }
+                            break;
+                        case '>':
+                            if (sortIndex < 5) {
+                                sortIndex++;
+                            }
+                            break;
+                    }
+                }
+            } catch (IOException e) {
+
+            }
+        }
+
+        return true;
     }
 
     private void clearScreen() {
@@ -130,7 +171,7 @@ public class KTop extends AbstractAction {
 
     private void printThreadsHeader(RuntimeMXBean runtime, ThreadMXBean threads) {
         System.out.printf(" UpTime: %-7s #Threads: %-4d #ThreadsPeak: %-4d #ThreadsCreated: %-4d %n",
-                          msToHoursMinutes(runtime.getUptime()), threads.getThreadCount(),
+                          timeUnitToHoursMinutes(MILLISECONDS, runtime.getUptime()), threads.getThreadCount(),
                           threads.getPeakThreadCount(),
                           threads.getTotalStartedThreadCount());
     }
@@ -158,73 +199,95 @@ public class KTop extends AbstractAction {
         // Test if this JVM supports telling us thread stats!
         if (threads.isThreadCpuTimeSupported()) {
 
-            Map<Long, Long> newThreadCPUMillis = new HashMap<Long, Long>();
-            Map<Long, Long> cpuTimeMap = new TreeMap<Long, Long>();
-
             long uptime = runtime.getUptime();
             long deltaUpTime = uptime - lastUpTime;
             lastUpTime = uptime;
 
-            for (Long tid : threads.getAllThreadIds()) {
-                long threadCpuTime = threads.getThreadCpuTime(tid);
-                long deltaThreadCpuTime = 0;
-                if (previousThreadCPUMillis.containsKey(tid)) {
-                    deltaThreadCpuTime = threadCpuTime - previousThreadCPUMillis.get(tid);
-                    cpuTimeMap.put(tid, deltaThreadCpuTime);
-                }
-                newThreadCPUMillis.put(tid, threadCpuTime);
-            }
+            Map<Long, Object[]> stats = getThreadStats(threads, deltaUpTime);
 
-            cpuTimeMap = sortByValue(cpuTimeMap, true);
+            List<Long> sortedKeys = sortByValue(stats);
 
             // Display threads
-            printThreads(threads, cpuTimeMap, deltaUpTime);
+            printThreads(sortedKeys, stats);
 
-            previousThreadCPUMillis = newThreadCPUMillis;
         } else {
             System.out.printf("%n -Thread CPU metrics are not available on this jvm/platform-%n");
         }
     }
 
-    private void printThreads(ThreadMXBean threads, Map<Long, Long> cpuTimeMap, Long deltaUpTime) {
+    private void printThreads(List<Long> sortedKeys, Map<Long, Object[]> stats) {
         int displayedThreads = 0;
-        for (Long tid : cpuTimeMap.keySet()) {
-            ThreadInfo info = threads.getThreadInfo(tid);
+        for (Long tid : sortedKeys) {
+
             displayedThreads++;
             if (displayedThreads > numberOfDisplayedThreads) {
                 break; // We're done displaying threads.
             }
-            if (info != null) {
-                String name = info.getThreadName();
-                System.out.printf(" %6d %-40s  %13s %5.2f%%    %s %5s %n",
-                                  tid,
-                                  name.substring(0, Math.min(name.length(), 40)) ,
-                                  info.getThreadState(),
-                                  getThreadCPUUtilization(cpuTimeMap.get(tid), deltaUpTime),
-                                  msToHoursMinutes(threads.getThreadCpuTime(tid)/1000000),
-                                  getBlockedThread(info));
-            }
+
+            System.out.printf(" %6d %-40s  %13s %5.2f%% %8s %5s %n",
+                              stats.get(tid)[0],
+                              stats.get(tid)[1],
+                              stats.get(tid)[2],
+                              stats.get(tid)[3],
+                              stats.get(tid)[4],
+                              stats.get(tid)[5]);
         }
     }
 
-    public Map sortByValue(Map map, boolean reverse) {
-        List list = new LinkedList(map.entrySet());
-        Collections.sort(list, new Comparator() {
+    private Map<Long, Object[]> getThreadStats(ThreadMXBean threads, long deltaUpTime) {
+        Map<Long, Object[]> allStats = new HashMap<Long, Object[]>();
 
-            @Override
-            public int compare(Object o1, Object o2) {
-                return ((Comparable) ((Map.Entry) (o1)).getValue()).compareTo(((Map.Entry) (o2)).getValue());
+        for (Long tid : threads.getAllThreadIds()) {
+
+            ThreadInfo info = threads.getThreadInfo(tid);
+
+            if (info != null) {
+                Object[] stats = new Object[6];
+                long threadCpuTime = threads.getThreadCpuTime(tid);
+                long deltaThreadCpuTime;
+
+                if (previousThreadCPUTime.containsKey(tid)) {
+                    deltaThreadCpuTime = threadCpuTime - previousThreadCPUTime.get(tid);
+                }
+                else {
+                    deltaThreadCpuTime = threadCpuTime;
+                }
+
+                previousThreadCPUTime.put(tid, threadCpuTime);
+
+                String name = info.getThreadName();
+                stats[0] = tid;
+                stats[1] = name.substring(0, Math.min(name.length(), 40));
+                stats[2] = info.getThreadState();
+                stats[3] = getThreadCPUUtilization(deltaThreadCpuTime, deltaUpTime);
+                stats[4] = timeUnitToMinutesSeconds(NANOSECONDS, threads.getThreadCpuTime(tid));
+                stats[5] = getBlockedThread(info);
+
+                allStats.put(tid, stats);
+            }
+        }
+
+        return allStats;
+    }
+
+    public List sortByValue(Map map) {
+        List<Map.Entry> list = new LinkedList(map.entrySet());
+        Collections.sort(list, new Comparator<Map.Entry>() {
+
+            public int compare(Map.Entry o1, Map.Entry o2) {
+                Comparable c1 = ((Comparable) (((Object[]) o1.getValue())[sortIndex]));
+                Comparable c2 = ((Comparable) (((Object[]) o2.getValue())[sortIndex]));
+                return c1.compareTo(c2);
             }
         });
 
-        if (reverse) {
+        if (reverseSort) {
             Collections.reverse(list);
         }
 
-        Map result = new LinkedHashMap();
-        for (Iterator it = list.iterator(); it.hasNext();) {
-            Map.Entry entry = (Map.Entry) it.next();
-            result.put(entry.getKey(), entry.getValue());
+        List result = new ArrayList();
+        for (Iterator<Map.Entry> it = list.iterator(); it.hasNext();) {
+            result.add(it.next().getKey());
         }
         return result;
     }
@@ -241,7 +304,7 @@ public class KTop extends AbstractAction {
         return getThreadCPUUtilization(deltaThreadCpuTime, totalTime, 1000 * 1000);
     }
 
-    private double getThreadCPUUtilization(long deltaThreadCpuTime,long totalTime, double factor) {
+    private double getThreadCPUUtilization(long deltaThreadCpuTime, long totalTime, double factor) {
         if (totalTime == 0) {
             return 0;
         }
@@ -255,10 +318,34 @@ public class KTop extends AbstractAction {
         return "" + (bytes / 1024 / 1024) + "m";
     }
 
-    public String msToHoursMinutes(long millis) {
+    public String timeUnitToHoursMinutes(TimeUnit timeUnit, long value) {
+        if (value == -1) {
+            return "0";
+        }
         StringBuilder sb = new StringBuilder();
         Formatter formatter = new Formatter(sb);
-        formatter.format("%2d:%2dm", millis / 1000 / 3600, (millis / 1000 / 60) % 60);
+        long hours = HOURS.convert(value, timeUnit);
+        long minutes = MINUTES.convert(value, timeUnit) - MINUTES.convert(hours, HOURS);
+        formatter.format("%2d:%02dm", hours, minutes);
+        return sb.toString();
+    }
+
+    public String timeUnitToMinutesSeconds(TimeUnit timeUnit, long value) {
+        if (value == -1) {
+            return "0";
+        }
+        long valueRemaining = value;
+        StringBuilder sb = new StringBuilder();
+        Formatter formatter = new Formatter(sb);
+
+        long minutes = MINUTES.convert(valueRemaining, timeUnit);
+        valueRemaining = valueRemaining - timeUnit.convert(minutes, MINUTES);
+        long seconds = SECONDS.convert(valueRemaining, timeUnit);
+        valueRemaining = valueRemaining - timeUnit.convert(seconds, SECONDS);
+        long nanoseconds = NANOSECONDS.convert(valueRemaining, timeUnit);
+        // min so that 99.5+ does not show up as 100 hundredths of a second
+        int hundredthsOfSecond = Math.min(Math.round(nanoseconds / 10000000f), 99);
+        formatter.format("%2d:%02d.%02d", minutes, seconds, hundredthsOfSecond);
         return sb.toString();
     }
 

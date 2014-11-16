@@ -28,7 +28,9 @@ To execute command on Karaf, invoke:
  aetos:ktop
 
 
-To exit ktop, press control + c
+To exit ktop: q
+To sort by a different column: < or >
+To reverse sort: r
 
 
 Runtime Options:

@@ -32,7 +32,7 @@
     <groupId>com.savoirtech.karaf.commands</groupId>
     <artifactId>ktop</artifactId>
     <packaging>bundle</packaging>
-    <version>0.2.0.M1</version>
+    <version>0.2.1.M1-SNAPSHOT</version>
     <name>Apache Karaf :: Shell aetos/ktop Commands</name>
 
     <description>Provides the OSGi aetos commands</description>
